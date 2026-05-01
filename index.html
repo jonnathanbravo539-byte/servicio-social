@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Control de Servicio Social - Preparatoria (200 horas)</title>
-    <!-- Estilos modernos y responsive -->
     <style>
         * {
             margin: 0;
@@ -19,13 +18,11 @@
             min-height: 100vh;
         }
 
-        /* Contenedor principal */
         .app-container {
             max-width: 1300px;
             margin: 0 auto;
         }
 
-        /* Header */
         .header {
             background: linear-gradient(135deg, #1e3c72, #2a5298);
             color: white;
@@ -56,14 +53,12 @@
             background: rgba(255,255,255,0.4);
         }
 
-        /* Paneles estilo cards */
         .panel {
             background: white;
             border-radius: 28px;
             padding: 1.5rem;
             margin-bottom: 24px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            transition: all 0.2s;
         }
         .panel-title {
             font-size: 1.6rem;
@@ -79,7 +74,6 @@
             gap: 24px;
         }
 
-        /* Formularios y tablas */
         input, textarea, select, button {
             width: 100%;
             padding: 12px;
@@ -88,7 +82,6 @@
             border: 1px solid #ccc;
             border-radius: 20px;
             font-size: 1rem;
-            transition: 0.2s;
         }
         textarea {
             resize: vertical;
@@ -100,7 +93,6 @@
             font-weight: bold;
             border: none;
             cursor: pointer;
-            margin-top: 4px;
         }
         button:hover {
             background: #1e3c72;
@@ -112,8 +104,11 @@
         .btn-success {
             background: #2e7d32;
         }
-        .btn-warning {
-            background: #f57c00;
+        .btn-danger {
+            background: #c62828;
+        }
+        .btn-danger:hover {
+            background: #b71c1c;
         }
         .table-responsive {
             overflow-x: auto;
@@ -127,7 +122,7 @@
             border: 1px solid #ddd;
             padding: 10px;
             text-align: left;
-            vertical-align: top;
+            vertical-align: middle;
         }
         th {
             background: #e9f0f9;
@@ -138,7 +133,6 @@
             border-radius: 40px;
             font-size: 0.8rem;
             display: inline-block;
-            margin: 2px 0;
         }
         .horas-grande {
             font-size: 2rem;
@@ -156,6 +150,16 @@
             border-radius: 20px;
             margin: 15px 0;
         }
+        .btn-eliminar {
+            background: #dc3545;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            width: auto;
+            margin: 0;
+        }
+        .btn-eliminar:hover {
+            background: #c82333;
+        }
         footer {
             text-align: center;
             margin-top: 30px;
@@ -165,6 +169,7 @@
         @media (max-width: 680px) {
             body { padding: 12px; }
             .panel-title { font-size: 1.3rem; }
+            .btn-eliminar { width: 100%; margin-top: 8px; }
         }
         .img-preview {
             max-width: 100px;
@@ -185,17 +190,17 @@
         <label>🔒 Contraseña</label>
         <input type="password" id="loginPass" placeholder="Contraseña">
         <button id="doLoginBtn">Ingresar</button>
-        <div class="alert" id="loginMsg" style="display:none;"></div>
+        <div id="loginMsg" style="display:none;" class="alert"></div>
+        <div style="margin-top: 15px; font-size: 0.8rem; text-align: center;">Admin: admin / admin123<br>Alumno demo: A001 / alumno123</div>
     </div>
 
-    <!-- Panel Administrador (solo visible para admin) -->
+    <!-- Panel Administrador -->
     <div id="adminPanel" style="display:none;">
         <div class="header">
             <h1>👨‍💼 Administrador - Servicio Social (200h)</h1>
             <button id="adminLogoutBtn" class="logout-btn">Cerrar sesión</button>
         </div>
         <div class="grid-2cols">
-            <!-- Gestión de alumnos -->
             <div class="panel">
                 <div class="panel-title">📚 Dar de alta alumno</div>
                 <input type="text" id="aluMatricula" placeholder="Matrícula (ej: A001)">
@@ -204,16 +209,15 @@
                 <button id="registerStudentBtn">➕ Registrar alumno</button>
                 <div id="adminMsg" style="margin-top:12px;" class="badge"></div>
             </div>
-            <!-- Botones de respaldo / guardado general -->
             <div class="panel">
                 <div class="panel-title">💾 Respaldo y gestión</div>
-                <button id="backupDataBtn" class="btn-success">📀 Respaldo completo (guardar local)</button>
+                <button id="backupDataBtn" class="btn-success">📀 Respaldo completo</button>
                 <button id="restoreBackupBtn" class="btn-secondary">🔄 Restaurar desde archivo</button>
                 <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
-                <div class="alert" style="margin-top:12px;">⚠️ Los respaldos se guardan en tu navegador. También puedes exportar/importar JSON.</div>
+                <div class="alert" style="margin-top:12px;">⚠️ Los respaldos guardan toda la información.</div>
             </div>
         </div>
-        <!-- Informes por alumno -->
+
         <div class="panel">
             <div class="panel-title">📄 Informes por alumno / Imprimir</div>
             <select id="selectStudentReport"></select>
@@ -222,13 +226,12 @@
             <div id="reportContent" style="margin-top: 20px;"></div>
         </div>
 
-        <!-- Tabla de todos los alumnos y sus horas -->
         <div class="panel">
-            <div class="panel-title">🎓 Listado de alumnos</div>
+            <div class="panel-title">🎓 Listado de alumnos <span style="font-size:0.9rem;">(con botón eliminar)</span></div>
             <div class="table-responsive">
                 <table id="studentsTable">
                     <thead>
-                        <tr><th>Matrícula</th><th>Nombre</th><th>Horas realizadas</th><th>Horas restantes</th><th>%</th></tr>
+                        <tr><th>Matrícula</th><th>Nombre</th><th>Horas</th><th>Restantes</th><th>%</th><th>Acciones</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -236,7 +239,7 @@
         </div>
     </div>
 
-    <!-- Panel Alumno (vista principal para alumno) -->
+    <!-- Panel Alumno -->
     <div id="studentPanel" style="display:none;">
         <div class="header">
             <h1>🎓 Servicio Social - Alumno</h1>
@@ -245,10 +248,9 @@
         <div class="panel">
             <div class="panel-title">⌛ Progreso de horas (Total 200 hrs)</div>
             <div class="horas-grande" id="horasRestantesDisplay">--- horas restantes</div>
-            <div class="alert" id="progressAlert"></div>
+            <div id="progressAlert" class="alert"></div>
         </div>
         <div class="grid-2cols">
-            <!-- Capturar actividad -->
             <div class="panel">
                 <div class="panel-title">➕ Capturar nueva actividad</div>
                 <label>📅 Fecha</label>
@@ -257,21 +259,16 @@
                 <input type="number" id="actHoras" step="0.5" min="0.5" value="1">
                 <label>📝 Descripción de la actividad</label>
                 <textarea id="actDesc" placeholder="Describe lo realizado..."></textarea>
-                <label>🖼️ Evidencia ANTES (imagen URL o archivo)</label>
+                <label>🖼️ Evidencia ANTES (imagen)</label>
                 <input type="file" id="evidenciaAntesFile" accept="image/*">
-                <label>🖼️ Evidencia DESPUÉS (imagen URL o archivo)</label>
+                <label>🖼️ Evidencia DESPUÉS (imagen)</label>
                 <input type="file" id="evidenciaDespuesFile" accept="image/*">
-                <div style="display: flex; gap: 8px;">
-                    <button id="submitActividadBtn" class="btn-success">✅ Registrar horas + evidencias</button>
-                </div>
+                <button id="submitActividadBtn" class="btn-success">✅ Registrar horas + evidencias</button>
                 <div id="actMsg"></div>
             </div>
-            <!-- Historial de actividades y evidencias -->
             <div class="panel">
                 <div class="panel-title">📋 Bitácora de actividades</div>
-                <div class="table-responsive" id="actividadesList" style="max-height: 400px; overflow-y: auto;">
-                    <!-- Se llenará dinámicamente -->
-                </div>
+                <div class="table-responsive" id="actividadesList" style="max-height: 400px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
@@ -279,13 +276,11 @@
 <footer>Sistema de Servicio Social | 200 horas requeridas | Evidencias antes/después</footer>
 
 <script>
-    // ------------------------- MODELO DE DATOS -------------------------
     let sistema = {
-        alumnos: [],     // { matricula, nombre, password, actividades: [], horasAcumuladas }
+        alumnos: [],
         ultimoIdAct: 1
     };
 
-    // Cargar datos desde localStorage
     function cargarDatos() {
         const stored = localStorage.getItem("sistemaServicioSocial");
         if(stored) {
@@ -294,7 +289,6 @@
                 sistema = data;
                 if(!sistema.alumnos) sistema.alumnos = [];
                 if(!sistema.ultimoIdAct) sistema.ultimoIdAct = 1;
-                // Compatibilidad: asegurar que cada actividad tenga evidenciaAntes/Despues
                 for(let a of sistema.alumnos) {
                     if(!a.actividades) a.actividades = [];
                     if(a.horasAcumuladas === undefined) a.horasAcumuladas = a.actividades.reduce((sum,act)=>sum+(act.horas||0),0);
@@ -305,7 +299,6 @@
                 }
             } catch(e) { console.log(e); }
         } else {
-            // Alumno de prueba opcional solo para demo (admin: admin/ admin123)
             sistema.alumnos.push({
                 matricula: "A001",
                 nombre: "Carlos Pérez",
@@ -349,7 +342,6 @@
         localStorage.setItem("sistemaServicioSocial", JSON.stringify(sistema));
     }
 
-    // Helper: recalcular horas de cada alumno
     function recalcularHorasAlumno(matricula) {
         const alumno = sistema.alumnos.find(a => a.matricula === matricula);
         if(alumno) {
@@ -360,7 +352,29 @@
         }
     }
 
-    // ---------- ADMIN: renderizar listado e informes ----------
+    // NUEVA FUNCIÓN: Eliminar alumno
+    function eliminarAlumno(matricula) {
+        const alumno = sistema.alumnos.find(a => a.matricula === matricula);
+        if(!alumno) return false;
+        
+        const confirmar = confirm(`⚠️ ¿Estás SEGURO de eliminar a ${alumno.nombre} (${matricula})?\n\nSe borrarán TODAS sus actividades y evidencias. ¡Esta acción no se puede deshacer!`);
+        if(!confirmar) return false;
+        
+        const index = sistema.alumnos.findIndex(a => a.matricula === matricula);
+        if(index !== -1) {
+            sistema.alumnos.splice(index, 1);
+            guardarStorage();
+            renderAdminTables();  // Actualizar tabla
+            // Limpiar reporte si estaba seleccionado
+            document.getElementById("reportContent").innerHTML = "";
+            const select = document.getElementById("selectStudentReport");
+            if(select && select.value === matricula) select.value = "";
+            alert(`✅ Alumno ${matricula} eliminado correctamente.`);
+            return true;
+        }
+        return false;
+    }
+
     function renderAdminTables() {
         const tbody = document.querySelector("#studentsTable tbody");
         if(!tbody) return;
@@ -368,12 +382,27 @@
         for(let a of sistema.alumnos) {
             const restantes = Math.max(0, 200 - a.horasAcumuladas);
             const porcentaje = (a.horasAcumuladas/200)*100;
-            const row = `<tr>
-                <td>${a.matricula}</td><td>${a.nombre}</td><td>${a.horasAcumuladas.toFixed(1)}</td>
-                <td>${restantes.toFixed(1)}</td><td>${porcentaje.toFixed(1)}%</td>
-            </tr>`;
-            tbody.innerHTML += row;
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${a.matricula}</td>
+                <td>${a.nombre}</td>
+                <td>${a.horasAcumuladas.toFixed(1)}</td>
+                <td>${restantes.toFixed(1)}</td>
+                <td>${porcentaje.toFixed(1)}%</td>
+                <td><button class="btn-eliminar" data-matricula="${a.matricula}">🗑️ Eliminar</button></td>
+            `;
+            tbody.appendChild(row);
         }
+        
+        // Asignar eventos a los botones de eliminar
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const matricula = btn.getAttribute('data-matricula');
+                eliminarAlumno(matricula);
+            });
+        });
+        
         // llenar select de informe
         const select = document.getElementById("selectStudentReport");
         if(select) {
@@ -394,11 +423,12 @@
             <p><strong>Horas restantes:</strong> ${restantes.toFixed(1)}</p>
             <p><strong>Estado:</strong> ${restantes <= 0 ? "¡Completado!" : "En proceso"}</p>
             <h4>Detalle de actividades:</h4>
-            <div class="table-responsive"><table width="100%">
-            <tr><th>Fecha</th><th>Horas</th><th>Descripción</th><th>Evidencia Antes</th><th>Evidencia Después</th></tr>`;
+            <div class="table-responsive"><table width="100%"><tr><th>Fecha</th><th>Horas</th><th>Descripción</th><th>Evidencia Antes</th><th>Evidencia Después</th></tr>`;
         for(let act of alumno.actividades) {
             html += `<tr>
-                <td>${act.fecha}</td><td>${act.horas}</td><td>${act.descripcion}</td>
+                <td>${act.fecha}</td>
+                <td>${act.horas}</td>
+                <td>${act.descripcion}</td>
                 <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-preview" onerror="this.style.display='none'"><br><a href="${act.evidenciaAntes}" target="_blank">Ver</a>` : "Sin evidencia"}</td>
                 <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-preview" onerror="this.style.display='none'"><br><a href="${act.evidenciaDespues}" target="_blank">Ver</a>` : "Sin evidencia"}</td>
             </tr>`;
@@ -407,8 +437,7 @@
         return html;
     }
 
-    // ---------- Funcionalidades Alumno ----------
-    let currentStudentData = null; // alumno logueado
+    let currentStudentData = null;
 
     function renderStudentPanel() {
         if(!currentStudentData) return;
@@ -419,7 +448,6 @@
         if(restantes <= 0) alertDiv.innerHTML = "🎉 ¡Felicidades! Completaste tus 200 horas de servicio social.";
         else alertDiv.innerHTML = `⏳ Te faltan ${restantes.toFixed(1)} horas para cumplir la meta.`;
 
-        // Mostrar lista de actividades
         const container = document.getElementById("actividadesList");
         if(container) {
             if(!currentStudentData.actividades || currentStudentData.actividades.length===0){
@@ -429,7 +457,9 @@
             let html = `<table><tr><th>Fecha</th><th>Horas</th><th>Descripción</th><th>Antes</th><th>Después</th></tr>`;
             for(let act of currentStudentData.actividades) {
                 html += `<tr>
-                    <td>${act.fecha}</td><td>${act.horas}</td><td>${act.descripcion.substring(0,60)}</td>
+                    <td>${act.fecha}</td>
+                    <td>${act.horas}</td>
+                    <td>${act.descripcion.substring(0,60)}</td>
                     <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-preview" onerror="this.style.display='none'">` : "—"}</td>
                     <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-preview" onerror="this.style.display='none'">` : "—"}</td>
                 </tr>`;
@@ -439,14 +469,12 @@
         }
     }
 
-    // Registrar actividad (con evidencias como URLs de dataURL o archivos)
     async function registrarActividad(fecha, horas, descripcion, antesFile, despuesFile) {
         if(!currentStudentData) return {ok:false, msg:"No hay sesión"};
         if(!fecha || !descripcion.trim() || horas<=0) return {ok:false, msg:"Complete todos los campos, horas válidas >0"};
         const nuevasHoras = (currentStudentData.horasAcumuladas || 0) + Number(horas);
         if(nuevasHoras > 200) return {ok:false, msg:`No puedes exceder 200 horas. Actualmente ${currentStudentData.horasAcumuladas} + ${horas} superaría el límite.`};
 
-        // Procesar imágenes a base64 para almacenarlas (modo offline simple)
         function fileToBase64(file) {
             return new Promise((resolve) => {
                 if(!file) return resolve("");
@@ -470,7 +498,6 @@
         };
         currentStudentData.actividades.push(nuevaAct);
         recalcularHorasAlumno(currentStudentData.matricula);
-        // actualizar currentStudentData
         const alumnoRefreshed = sistema.alumnos.find(a=>a.matricula === currentStudentData.matricula);
         if(alumnoRefreshed) currentStudentData = alumnoRefreshed;
         guardarStorage();
@@ -479,25 +506,18 @@
         return {ok:true, msg:"Actividad registrada con evidencias"};
     }
 
-    // ---------- LOGICA DE LOGIN ----------
     function login(user, pass) {
-        if(user === "admin" && pass === "admin123") {
-            return {role: "admin", data: null};
-        }
+        if(user === "admin" && pass === "admin123") return {role: "admin", data: null};
         const alumno = sistema.alumnos.find(a => a.matricula === user && a.password === pass);
-        if(alumno) {
-            return {role: "student", data: alumno};
-        }
+        if(alumno) return {role: "student", data: alumno};
         return null;
     }
 
-    // UI switching
     function showAdminUI() {
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("adminPanel").style.display = "block";
         document.getElementById("studentPanel").style.display = "none";
         renderAdminTables();
-        // Actualizar informe si se necesita
         const btnView = document.getElementById("viewReportBtn");
         const btnPrint = document.getElementById("printReportBtn");
         btnView.onclick = () => {
@@ -524,7 +544,6 @@
         renderStudentPanel();
     }
 
-    // ------ respaldos y carga
     function respaldoCompleto() {
         const dataStr = JSON.stringify(sistema, null, 2);
         const blob = new Blob([dataStr], {type: "application/json"});
@@ -551,10 +570,9 @@
         reader.readAsText(file);
     }
 
-    // ----- EVENTOS INICIALES -----
     window.onload = () => {
         cargarDatos();
-        // Login
+        
         document.getElementById("doLoginBtn").onclick = () => {
             const user = document.getElementById("loginUser").value.trim();
             const pass = document.getElementById("loginPass").value;
@@ -566,14 +584,13 @@
                 const msgDiv = document.getElementById("loginMsg");
                 msgDiv.style.display = "block";
                 msgDiv.innerText = "❌ Credenciales inválidas. (Admin: admin/admin123)";
-                msgDiv.style.background="#ffe6e6";
                 setTimeout(()=>msgDiv.style.display="none", 2500);
             }
         };
-        document.getElementById("adminLogoutBtn") && (document.getElementById("adminLogoutBtn").onclick = () => location.reload());
-        document.getElementById("studentLogoutBtn") && (document.getElementById("studentLogoutBtn").onclick = () => location.reload());
-
-        // Admin: alta alumno
+        
+        document.getElementById("adminLogoutBtn").onclick = () => location.reload();
+        document.getElementById("studentLogoutBtn").onclick = () => location.reload();
+        
         document.getElementById("registerStudentBtn").onclick = () => {
             const mat = document.getElementById("aluMatricula").value.trim();
             const nom = document.getElementById("aluNombre").value.trim();
@@ -595,15 +612,13 @@
             document.getElementById("aluNombre").value = "";
             document.getElementById("aluPassGen").value = "";
         };
-        // Botones respaldo
+        
         document.getElementById("backupDataBtn").onclick = respaldoCompleto;
-        document.getElementById("restoreBackupBtn").onclick = () => {
-            document.getElementById("restoreFileInput").click();
-        };
+        document.getElementById("restoreBackupBtn").onclick = () => document.getElementById("restoreFileInput").click();
         document.getElementById("restoreFileInput").onchange = (e) => {
             if(e.target.files.length) restaurarDesdeArchivo(e.target.files[0]);
         };
-        // Botón para enviar actividad alumno
+        
         document.getElementById("submitActividadBtn").onclick = async () => {
             const fecha = document.getElementById("actFecha").value;
             const horas = parseFloat(document.getElementById("actHoras").value);
@@ -625,8 +640,6 @@
             if(document.getElementById("adminPanel").style.display === "block") renderAdminTables();
             else renderStudentPanel();
         };
-        // Si ya hay sesión previa, se queda en login, pero podemos precargar datos. Sin validación automática.
-        document.getElementById("loginUser").value = "";
     };
 </script>
 </body>
