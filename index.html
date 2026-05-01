@@ -67,6 +67,10 @@
             color: #1e3c72;
             border-left: 6px solid #2a5298;
             padding-left: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
         }
         .grid-2cols {
             display: grid;
@@ -95,9 +99,13 @@
             cursor: pointer;
             transition: 0.2s;
         }
-        button:hover {
+        button:hover:not(:disabled) {
             background: #1e3c72;
             transform: scale(0.98);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
         .btn-secondary {
             background: #4b6e8a;
@@ -108,8 +116,18 @@
         .btn-danger {
             background: #c62828;
         }
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #b71c1c;
+        }
+        .btn-warning {
+            background: #f57c00;
+        }
+        .btn-small {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            width: auto;
+            margin: 2px;
+            display: inline-block;
         }
         .table-responsive {
             overflow-x: auto;
@@ -151,44 +169,26 @@
             border-radius: 20px;
             margin: 15px 0;
         }
-        .btn-eliminar {
+        .btn-eliminar-alumno {
             background: #dc3545;
             padding: 6px 12px;
             font-size: 0.85rem;
             width: auto;
             margin: 0;
         }
-        .btn-eliminar:hover {
-            background: #c82333;
-        }
-        .img-preview {
-            max-width: 80px;
-            max-height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin: 4px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .img-preview:hover {
-            transform: scale(1.05);
+        .btn-eliminar-actividad {
+            background: #dc3545;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            width: auto;
+            margin: 0;
         }
         .img-thumbnail {
             max-width: 80px;
             max-height: 60px;
             object-fit: cover;
             border-radius: 8px;
-        }
-        .loading-img {
-            background: #e0e0e0;
-            border-radius: 8px;
-            width: 80px;
-            height: 60px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            color: #666;
+            cursor: pointer;
         }
         footer {
             text-align: center;
@@ -196,10 +196,17 @@
             font-size: 0.8rem;
             color: #6c757d;
         }
+        .actividad-row {
+            background: white;
+        }
+        .actividad-eliminada {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
         @media (max-width: 680px) {
             body { padding: 12px; }
             .panel-title { font-size: 1.3rem; }
-            .btn-eliminar { width: 100%; margin-top: 8px; }
+            .btn-small { width: 100%; margin-top: 5px; }
         }
     </style>
 </head>
@@ -237,7 +244,7 @@
                 <button id="backupDataBtn" class="btn-success">📀 Respaldo completo</button>
                 <button id="restoreBackupBtn" class="btn-secondary">🔄 Restaurar desde archivo</button>
                 <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
-                <div class="alert" style="margin-top:12px;">⚠️ Las imágenes se comprimen automáticamente (máx 800px)</div>
+                <div class="alert" style="margin-top:12px;">⚠️ Las imágenes se comprimen automáticamente</div>
             </div>
         </div>
 
@@ -282,44 +289,46 @@
                 <input type="number" id="actHoras" step="0.5" min="0.5" value="1">
                 <label>📝 Descripción de la actividad</label>
                 <textarea id="actDesc" placeholder="Describe lo realizado..."></textarea>
-                <label>🖼️ Evidencia ANTES (imagen - se comprimirá automáticamente)</label>
+                <label>🖼️ Evidencia ANTES (imagen - se comprimirá)</label>
                 <input type="file" id="evidenciaAntesFile" accept="image/*">
-                <label>🖼️ Evidencia DESPUÉS (imagen - se comprimirá automáticamente)</label>
+                <label>🖼️ Evidencia DESPUÉS (imagen - se comprimirá)</label>
                 <input type="file" id="evidenciaDespuesFile" accept="image/*">
                 <button id="submitActividadBtn" class="btn-success">✅ Registrar horas + evidencias</button>
                 <div id="actMsg"></div>
             </div>
             <div class="panel">
-                <div class="panel-title">📋 Bitácora de actividades</div>
-                <div class="table-responsive" id="actividadesList" style="max-height: 400px; overflow-y: auto;"></div>
+                <div class="panel-title">
+                    📋 Bitácora de actividades
+                    <span style="font-size:0.8rem;">(click 🗑️ para eliminar)</span>
+                </div>
+                <div class="table-responsive" id="actividadesList" style="max-height: 450px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
 </div>
-<footer>Sistema de Servicio Social | 200 horas requeridas | Imágenes comprimidas automáticamente</footer>
+<footer>Sistema de Servicio Social | 200 horas requeridas | Eliminación de actividades (solo admin o el propio alumno)</footer>
 
 <script>
     let sistema = {
         alumnos: [],
         ultimoIdAct: 1
     };
+    let currentUserRole = null; // 'admin' o 'student'
+    let currentStudentData = null;
 
-    // ========== FUNCIÓN DE COMPRESIÓN DE IMÁGENES ==========
+    // Función de compresión de imágenes
     function comprimirImagen(file, maxWidth = 800, maxHeight = 600, calidad = 0.7) {
         return new Promise((resolve, reject) => {
             if (!file || !file.type.startsWith('image/')) {
                 resolve("");
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
                     let width = img.width;
                     let height = img.height;
-                    
-                    // Calcular nuevas dimensiones manteniendo proporción
                     if (width > maxWidth) {
                         height = (height * maxWidth) / width;
                         width = maxWidth;
@@ -328,24 +337,14 @@
                         width = (width * maxHeight) / height;
                         height = maxHeight;
                     }
-                    
-                    // Crear canvas para redimensionar
                     const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // Convertir a JPEG con calidad ajustable (para fotos es mejor)
                     const formato = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
                     const calidadFinal = formato === 'image/png' ? 0.9 : calidad;
                     const imagenComprimida = canvas.toDataURL(formato, calidadFinal);
-                    
-                    // Mostrar tamaño aproximado en consola (para debug)
-                    const tamañoOriginal = (file.size / 1024).toFixed(1);
-                    const tamañoComprimido = (imagenComprimida.length * 0.75 / 1024).toFixed(1);
-                    console.log(`📸 Imagen comprimida: ${tamañoOriginal}KB → ${tamañoComprimido}KB`);
-                    
                     resolve(imagenComprimida);
                 };
                 img.onerror = () => reject(new Error("Error al cargar la imagen"));
@@ -367,14 +366,9 @@
                 for(let a of sistema.alumnos) {
                     if(!a.actividades) a.actividades = [];
                     if(a.horasAcumuladas === undefined) a.horasAcumuladas = a.actividades.reduce((sum,act)=>sum+(act.horas||0),0);
-                    for(let act of a.actividades) {
-                        if(!act.evidenciaAntes) act.evidenciaAntes = "";
-                        if(!act.evidenciaDespues) act.evidenciaDespues = "";
-                    }
                 }
             } catch(e) { console.log(e); }
         } else {
-            // Datos demo sin imágenes pesadas
             sistema.alumnos.push({
                 matricula: "A001",
                 nombre: "Carlos Pérez",
@@ -410,6 +404,7 @@
                     evidenciaDespues: ""
                 }]
             });
+            sistema.ultimoIdAct = 4;
             guardarStorage();
         }
     }
@@ -428,22 +423,38 @@
         }
     }
 
-    function eliminarAlumno(matricula) {
-        const alumno = sistema.alumnos.find(a => a.matricula === matricula);
+    // ========== NUEVA FUNCIÓN: ELIMINAR ACTIVIDAD ==========
+    function eliminarActividad(matriculaAlumno, idActividad) {
+        const alumno = sistema.alumnos.find(a => a.matricula === matriculaAlumno);
         if(!alumno) return false;
         
-        const confirmar = confirm(`⚠️ ¿Estás SEGURO de eliminar a ${alumno.nombre} (${matricula})?\n\nSe borrarán TODAS sus actividades y evidencias. ¡Esta acción no se puede deshacer!`);
+        const actividad = alumno.actividades.find(a => a.id === idActividad);
+        if(!actividad) return false;
+        
+        const confirmar = confirm(`⚠️ ¿Eliminar actividad del ${actividad.fecha} (${actividad.horas} horas)?\n📝 "${actividad.descripcion.substring(0,50)}"\n\nEsta acción también resta las horas y NO se puede deshacer.`);
         if(!confirmar) return false;
         
-        const index = sistema.alumnos.findIndex(a => a.matricula === matricula);
+        const index = alumno.actividades.findIndex(a => a.id === idActividad);
         if(index !== -1) {
-            sistema.alumnos.splice(index, 1);
+            alumno.actividades.splice(index, 1);
+            recalcularHorasAlumno(matriculaAlumno);
             guardarStorage();
-            renderAdminTables();
-            document.getElementById("reportContent").innerHTML = "";
-            const select = document.getElementById("selectStudentReport");
-            if(select && select.value === matricula) select.value = "";
-            alert(`✅ Alumno ${matricula} eliminado correctamente.`);
+            
+            // Actualizar vistas según quién esté logueado
+            if(currentUserRole === 'admin') {
+                renderAdminTables();
+                // Si el reporte estaba abierto para este alumno, refrescarlo
+                const select = document.getElementById("selectStudentReport");
+                if(select && select.value === matriculaAlumno) {
+                    document.getElementById("reportContent").innerHTML = generarInformeHTML(matriculaAlumno);
+                }
+            } else if(currentUserRole === 'student' && currentStudentData && currentStudentData.matricula === matriculaAlumno) {
+                // Actualizar datos del alumno actual
+                const alumnoActualizado = sistema.alumnos.find(a => a.matricula === currentStudentData.matricula);
+                if(alumnoActualizado) currentStudentData = alumnoActualizado;
+                renderStudentPanel();
+            }
+            alert(`✅ Actividad eliminada correctamente. Horas actualizadas.`);
             return true;
         }
         return false;
@@ -463,12 +474,12 @@
                 <td>${a.horasAcumuladas.toFixed(1)}</td>
                 <td>${restantes.toFixed(1)}</td>
                 <td>${porcentaje.toFixed(1)}%</td>
-                <td><button class="btn-eliminar" data-matricula="${a.matricula}">🗑️ Eliminar</button></td>
+                <td><button class="btn-eliminar-alumno" data-matricula="${a.matricula}">🗑️ Eliminar Alumno</button></td>
             `;
             tbody.appendChild(row);
         }
         
-        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+        document.querySelectorAll('.btn-eliminar-alumno').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const matricula = btn.getAttribute('data-matricula');
@@ -480,9 +491,28 @@
         if(select) {
             select.innerHTML = '<option value="">-- Seleccione alumno --</option>';
             for(let a of sistema.alumnos) {
-                select.innerHTML += `<option value="${a.matricula}">${a.matricula} - ${a.nombre}</option>`;
+                select.innerHTML += `<option value="${a.matricula}">${a.matricula} - ${a.nombre} (${a.horasAcumuladas.toFixed(1)} hrs)</option>`;
             }
         }
+    }
+
+    function eliminarAlumno(matricula) {
+        const alumno = sistema.alumnos.find(a => a.matricula === matricula);
+        if(!alumno) return false;
+        const confirmar = confirm(`⚠️ ¿Eliminar a ${alumno.nombre} (${matricula})? Se borrarán TODAS sus actividades.`);
+        if(!confirmar) return false;
+        const index = sistema.alumnos.findIndex(a => a.matricula === matricula);
+        if(index !== -1) {
+            sistema.alumnos.splice(index, 1);
+            guardarStorage();
+            renderAdminTables();
+            document.getElementById("reportContent").innerHTML = "";
+            const select = document.getElementById("selectStudentReport");
+            if(select && select.value === matricula) select.value = "";
+            alert(`✅ Alumno eliminado.`);
+            return true;
+        }
+        return false;
     }
 
     function generarInformeHTML(matricula) {
@@ -493,23 +523,25 @@
             <h3>${alumno.nombre} (${alumno.matricula})</h3>
             <p><strong>Horas cumplidas:</strong> ${alumno.horasAcumuladas.toFixed(1)} / 200</p>
             <p><strong>Horas restantes:</strong> ${restantes.toFixed(1)}</p>
-            <p><strong>Estado:</strong> ${restantes <= 0 ? "¡Completado!" : "En proceso"}</p>
             <h4>Detalle de actividades:</h4>
-            <div class="table-responsive"><table width="100%"><tr><th>Fecha</th><th>Horas</th><th>Descripción</th><th>Evidencia Antes</th><th>Evidencia Después</th></tr>`;
+            <div class="table-responsive"><table width="100%">\(
+                <th>Fecha</th><th>Horas</th><th>Descripción</th><th>Evidencia Antes</th><th>Evidencia Después</th><th>Acción</th>
+            </thead><tbody>`;
         for(let act of alumno.actividades) {
             html += `<tr>
                 <td>${act.fecha}</td>
                 <td>${act.horas}</td>
                 <td>${act.descripcion}</td>
-                <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)">` : "Sin evidencia"}</td>
-                <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)">` : "Sin evidencia"}</td>
+                <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" onclick="window.open(this.src)">` : "—"}</td>
+                <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" onclick="window.open(this.src)">` : "—"}</td>
+                <td><button class="btn-small btn-danger eliminar-actividad-reporte" data-matricula="${matricula}" data-id="${act.id}">🗑️ Eliminar</button></td>
             </tr>`;
         }
-        html += `</table></div></div>`;
+        html += `</tbody></table></div>
+        <p style="margin-top:10px; font-size:0.8rem;">* Los administradores pueden eliminar actividades no válidas</p>
+        </div>`;
         return html;
     }
-
-    let currentStudentData = null;
 
     function renderStudentPanel() {
         if(!currentStudentData) return;
@@ -517,8 +549,8 @@
         const restantes = Math.max(0, 200 - acum);
         document.getElementById("horasRestantesDisplay").innerHTML = `${restantes.toFixed(1)} horas restantes (${acum.toFixed(1)} realizadas)`;
         const alertDiv = document.getElementById("progressAlert");
-        if(restantes <= 0) alertDiv.innerHTML = "🎉 ¡Felicidades! Completaste tus 200 horas de servicio social.";
-        else alertDiv.innerHTML = `⏳ Te faltan ${restantes.toFixed(1)} horas para cumplir la meta.`;
+        if(restantes <= 0) alertDiv.innerHTML = "🎉 ¡Felicidades! Completaste tus 200 horas.";
+        else alertDiv.innerHTML = `⏳ Te faltan ${restantes.toFixed(1)} horas.`;
 
         const container = document.getElementById("actividadesList");
         if(container) {
@@ -526,36 +558,47 @@
                 container.innerHTML = "<div class='badge'>No hay actividades registradas aún.</div>";
                 return;
             }
-            let html = `<table><tr><th>Fecha</th><th>Horas</th><th>Descripción</th><th>Antes</th><th>Después</th></tr>`;
+            let html = `<table style="width:100%"><thead><tr>
+                <th>Fecha</th><th>Horas</th><th>Descripción</th><th>Antes</th><th>Después</th><th></th>
+            </tr></thead><tbody>`;
             for(let act of currentStudentData.actividades) {
                 html += `<tr>
                     <td>${act.fecha}</td>
                     <td>${act.horas}</td>
-                    <td>${act.descripcion.substring(0,60)}</td>
-                    <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)" title="Click para ampliar">` : "—"}</td>
-                    <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)" title="Click para ampliar">` : "—"}</td>
+                    <td>${act.descripcion.substring(0,50)}</td>
+                    <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" onclick="window.open(this.src)">` : "—"}</td>
+                    <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" onclick="window.open(this.src)">` : "—"}</td>
+                    <td><button class="btn-small btn-danger eliminar-actividad-student" data-id="${act.id}">🗑️</button></td>
                 </tr>`;
             }
-            html += `</table>`;
+            html += `</tbody></table>`;
             container.innerHTML = html;
+            
+            // Eventos para botones de eliminar (alumno)
+            document.querySelectorAll('.eliminar-actividad-student').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const idAct = parseInt(btn.getAttribute('data-id'));
+                    if(confirm("¿Eliminar esta actividad? Se restarán las horas.")) {
+                        eliminarActividad(currentStudentData.matricula, idAct);
+                    }
+                });
+            });
         }
     }
 
     async function registrarActividad(fecha, horas, descripcion, antesFile, despuesFile) {
         if(!currentStudentData) return {ok:false, msg:"No hay sesión"};
-        if(!fecha || !descripcion.trim() || horas<=0) return {ok:false, msg:"Complete todos los campos, horas válidas >0"};
+        if(!fecha || !descripcion.trim() || horas<=0) return {ok:false, msg:"Complete campos válidos"};
         const nuevasHoras = (currentStudentData.horasAcumuladas || 0) + Number(horas);
-        if(nuevasHoras > 200) return {ok:false, msg:`No puedes exceder 200 horas. Actualmente ${currentStudentData.horasAcumuladas} + ${horas} superaría el límite.`};
+        if(nuevasHoras > 200) return {ok:false, msg:`Límite excedido: ${currentStudentData.horasAcumuladas} + ${horas} > 200`};
 
-        // Mostrar mensaje de compresión
         const msgDiv = document.getElementById("actMsg");
-        msgDiv.innerText = "⏳ Comprimiendo imágenes... esto puede tomar unos segundos";
+        msgDiv.innerText = "⏳ Comprimiendo imágenes...";
         msgDiv.style.color = "orange";
         
-        // Comprimir imágenes antes de guardar
         const [antesComprimida, despuesComprimida] = await Promise.all([
-            antesFile ? comprimirImagen(antesFile, 800, 600, 0.7) : Promise.resolve(""),
-            despuesFile ? comprimirImagen(despuesFile, 800, 600, 0.7) : Promise.resolve("")
+            antesFile ? comprimirImagen(antesFile) : Promise.resolve(""),
+            despuesFile ? comprimirImagen(despuesFile) : Promise.resolve("")
         ]);
 
         const nuevaAct = {
@@ -572,8 +615,8 @@
         if(alumnoRefreshed) currentStudentData = alumnoRefreshed;
         guardarStorage();
         renderStudentPanel();
-        if(document.getElementById("adminPanel").style.display === "block") renderAdminTables();
-        return {ok:true, msg:"✅ Actividad registrada con imágenes comprimidas (carga más rápida)"};
+        if(currentUserRole === 'admin') renderAdminTables();
+        return {ok:true, msg:"✅ Actividad registrada con imágenes comprimidas"};
     }
 
     function login(user, pass) {
@@ -584,22 +627,43 @@
     }
 
     function showAdminUI() {
+        currentUserRole = 'admin';
+        currentStudentData = null;
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("adminPanel").style.display = "block";
         document.getElementById("studentPanel").style.display = "none";
         renderAdminTables();
+        
         const btnView = document.getElementById("viewReportBtn");
         const btnPrint = document.getElementById("printReportBtn");
         btnView.onclick = () => {
             const mat = document.getElementById("selectStudentReport").value;
-            if(mat) document.getElementById("reportContent").innerHTML = generarInformeHTML(mat);
-            else document.getElementById("reportContent").innerHTML = "<p>Seleccione un alumno</p>";
+            if(mat) {
+                const html = generarInformeHTML(mat);
+                document.getElementById("reportContent").innerHTML = html;
+                // Asignar eventos a botones de eliminar del reporte
+                document.querySelectorAll('.eliminar-actividad-reporte').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const matricula = btn.getAttribute('data-matricula');
+                        const idAct = parseInt(btn.getAttribute('data-id'));
+                        if(confirm("¿Eliminar esta actividad del informe?")) {
+                            eliminarActividad(matricula, idAct);
+                            // Refrescar reporte
+                            document.getElementById("reportContent").innerHTML = generarInformeHTML(matricula);
+                            renderAdminTables();
+                            if(currentStudentData && currentStudentData.matricula === matricula) renderStudentPanel();
+                        }
+                    });
+                });
+            } else {
+                document.getElementById("reportContent").innerHTML = "<p>Seleccione un alumno</p>";
+            }
         };
         btnPrint.onclick = () => {
             const mat = document.getElementById("selectStudentReport").value;
             if(mat){
                 const printWindow = window.open('', '_blank');
-                printWindow.document.write(`<html><head><title>Informe Servicio Social</title><style>body{font-family:sans-serif;padding:20px;} img{max-width:200px;}</style></head><body>${generarInformeHTML(mat)}</body></html>`);
+                printWindow.document.write(`<html><head><title>Informe</title><style>img{max-width:200px;} button{display:none;}</style></head><body>${generarInformeHTML(mat)}</body></html>`);
                 printWindow.document.close();
                 printWindow.print();
             } else alert("Selecciona un alumno");
@@ -607,6 +671,7 @@
     }
 
     function showStudentUI(student) {
+        currentUserRole = 'student';
         currentStudentData = student;
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("adminPanel").style.display = "none";
@@ -623,7 +688,7 @@
         a.download = `respaldo_servicio_social_${new Date().toISOString().slice(0,19)}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        alert("Respaldo generado correctamente");
+        alert("Respaldo generado");
     }
 
     function restaurarDesdeArchivo(file) {
@@ -633,7 +698,7 @@
                 const nuevoSistema = JSON.parse(e.target.result);
                 sistema = nuevoSistema;
                 guardarStorage();
-                alert("Restauración exitosa. Recargando datos...");
+                alert("Restauración exitosa. Recargando...");
                 location.reload();
             }catch(ex){ alert("Error en archivo JSON");}
         };
@@ -642,7 +707,6 @@
 
     window.onload = () => {
         cargarDatos();
-        
         document.getElementById("doLoginBtn").onclick = () => {
             const user = document.getElementById("loginUser").value.trim();
             const pass = document.getElementById("loginPass").value;
@@ -653,11 +717,10 @@
             } else {
                 const msgDiv = document.getElementById("loginMsg");
                 msgDiv.style.display = "block";
-                msgDiv.innerText = "❌ Credenciales inválidas. (Admin: admin/admin123)";
+                msgDiv.innerText = "❌ Credenciales inválidas.";
                 setTimeout(()=>msgDiv.style.display="none", 2500);
             }
         };
-        
         document.getElementById("adminLogoutBtn").onclick = () => location.reload();
         document.getElementById("studentLogoutBtn").onclick = () => location.reload();
         
@@ -665,18 +728,12 @@
             const mat = document.getElementById("aluMatricula").value.trim();
             const nom = document.getElementById("aluNombre").value.trim();
             const pass = document.getElementById("aluPassGen").value.trim();
-            if(!mat || !nom || !pass) { alert("Complete todos los campos"); return; }
-            if(sistema.alumnos.find(a=>a.matricula === mat)) { alert("Matrícula ya existe"); return; }
-            sistema.alumnos.push({
-                matricula: mat,
-                nombre: nom,
-                password: pass,
-                horasAcumuladas: 0,
-                actividades: []
-            });
+            if(!mat || !nom || !pass) { alert("Complete campos"); return; }
+            if(sistema.alumnos.find(a=>a.matricula === mat)) { alert("Ya existe"); return; }
+            sistema.alumnos.push({ matricula: mat, nombre: nom, password: pass, horasAcumuladas: 0, actividades: [] });
             guardarStorage();
             renderAdminTables();
-            document.getElementById("adminMsg").innerHTML = `✅ Alumno ${nom} registrado`;
+            document.getElementById("adminMsg").innerHTML = `✅ Alumno registrado`;
             setTimeout(()=>document.getElementById("adminMsg").innerHTML="", 2000);
             document.getElementById("aluMatricula").value = "";
             document.getElementById("aluNombre").value = "";
@@ -690,18 +747,15 @@
         };
         
         document.getElementById("submitActividadBtn").onclick = async () => {
-            // Deshabilitar botón mientras se procesa
             const btn = document.getElementById("submitActividadBtn");
             btn.disabled = true;
-            btn.textContent = "⏳ Procesando imágenes...";
-            
+            btn.textContent = "⏳ Procesando...";
             const fecha = document.getElementById("actFecha").value;
             const horas = parseFloat(document.getElementById("actHoras").value);
             const desc = document.getElementById("actDesc").value;
             const antesFile = document.getElementById("evidenciaAntesFile").files[0];
             const despuesFile = document.getElementById("evidenciaDespuesFile").files[0];
             const result = await registrarActividad(fecha, horas, desc, antesFile, despuesFile);
-            
             const msgDiv = document.getElementById("actMsg");
             msgDiv.innerText = result.msg;
             msgDiv.style.color = result.ok ? "green" : "red";
@@ -712,11 +766,10 @@
                 document.getElementById("evidenciaAntesFile").value = "";
                 document.getElementById("evidenciaDespuesFile").value = "";
             }
-            setTimeout(()=>msgDiv.innerText="", 4000);
-            
+            setTimeout(()=>msgDiv.innerText="", 3000);
             btn.disabled = false;
             btn.textContent = "✅ Registrar horas + evidencias";
-            if(document.getElementById("adminPanel").style.display === "block") renderAdminTables();
+            if(currentUserRole === 'admin') renderAdminTables();
             else renderStudentPanel();
         };
     };
