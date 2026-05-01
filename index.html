@@ -93,6 +93,7 @@
             font-weight: bold;
             border: none;
             cursor: pointer;
+            transition: 0.2s;
         }
         button:hover {
             background: #1e3c72;
@@ -160,6 +161,35 @@
         .btn-eliminar:hover {
             background: #c82333;
         }
+        .img-preview {
+            max-width: 80px;
+            max-height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .img-preview:hover {
+            transform: scale(1.05);
+        }
+        .img-thumbnail {
+            max-width: 80px;
+            max-height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .loading-img {
+            background: #e0e0e0;
+            border-radius: 8px;
+            width: 80px;
+            height: 60px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #666;
+        }
         footer {
             text-align: center;
             margin-top: 30px;
@@ -170,13 +200,6 @@
             body { padding: 12px; }
             .panel-title { font-size: 1.3rem; }
             .btn-eliminar { width: 100%; margin-top: 8px; }
-        }
-        .img-preview {
-            max-width: 100px;
-            max-height: 80px;
-            object-fit: cover;
-            border-radius: 12px;
-            margin: 4px;
         }
     </style>
 </head>
@@ -214,7 +237,7 @@
                 <button id="backupDataBtn" class="btn-success">📀 Respaldo completo</button>
                 <button id="restoreBackupBtn" class="btn-secondary">🔄 Restaurar desde archivo</button>
                 <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
-                <div class="alert" style="margin-top:12px;">⚠️ Los respaldos guardan toda la información.</div>
+                <div class="alert" style="margin-top:12px;">⚠️ Las imágenes se comprimen automáticamente (máx 800px)</div>
             </div>
         </div>
 
@@ -227,7 +250,7 @@
         </div>
 
         <div class="panel">
-            <div class="panel-title">🎓 Listado de alumnos <span style="font-size:0.9rem;">(con botón eliminar)</span></div>
+            <div class="panel-title">🎓 Listado de alumnos</div>
             <div class="table-responsive">
                 <table id="studentsTable">
                     <thead>
@@ -259,9 +282,9 @@
                 <input type="number" id="actHoras" step="0.5" min="0.5" value="1">
                 <label>📝 Descripción de la actividad</label>
                 <textarea id="actDesc" placeholder="Describe lo realizado..."></textarea>
-                <label>🖼️ Evidencia ANTES (imagen)</label>
+                <label>🖼️ Evidencia ANTES (imagen - se comprimirá automáticamente)</label>
                 <input type="file" id="evidenciaAntesFile" accept="image/*">
-                <label>🖼️ Evidencia DESPUÉS (imagen)</label>
+                <label>🖼️ Evidencia DESPUÉS (imagen - se comprimirá automáticamente)</label>
                 <input type="file" id="evidenciaDespuesFile" accept="image/*">
                 <button id="submitActividadBtn" class="btn-success">✅ Registrar horas + evidencias</button>
                 <div id="actMsg"></div>
@@ -273,13 +296,65 @@
         </div>
     </div>
 </div>
-<footer>Sistema de Servicio Social | 200 horas requeridas | Evidencias antes/después</footer>
+<footer>Sistema de Servicio Social | 200 horas requeridas | Imágenes comprimidas automáticamente</footer>
 
 <script>
     let sistema = {
         alumnos: [],
         ultimoIdAct: 1
     };
+
+    // ========== FUNCIÓN DE COMPRESIÓN DE IMÁGENES ==========
+    function comprimirImagen(file, maxWidth = 800, maxHeight = 600, calidad = 0.7) {
+        return new Promise((resolve, reject) => {
+            if (!file || !file.type.startsWith('image/')) {
+                resolve("");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Calcular nuevas dimensiones manteniendo proporción
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+                    if (height > maxHeight) {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+                    
+                    // Crear canvas para redimensionar
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convertir a JPEG con calidad ajustable (para fotos es mejor)
+                    const formato = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                    const calidadFinal = formato === 'image/png' ? 0.9 : calidad;
+                    const imagenComprimida = canvas.toDataURL(formato, calidadFinal);
+                    
+                    // Mostrar tamaño aproximado en consola (para debug)
+                    const tamañoOriginal = (file.size / 1024).toFixed(1);
+                    const tamañoComprimido = (imagenComprimida.length * 0.75 / 1024).toFixed(1);
+                    console.log(`📸 Imagen comprimida: ${tamañoOriginal}KB → ${tamañoComprimido}KB`);
+                    
+                    resolve(imagenComprimida);
+                };
+                img.onerror = () => reject(new Error("Error al cargar la imagen"));
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error("Error al leer el archivo"));
+            reader.readAsDataURL(file);
+        });
+    }
 
     function cargarDatos() {
         const stored = localStorage.getItem("sistemaServicioSocial");
@@ -299,6 +374,7 @@
                 }
             } catch(e) { console.log(e); }
         } else {
+            // Datos demo sin imágenes pesadas
             sistema.alumnos.push({
                 matricula: "A001",
                 nombre: "Carlos Pérez",
@@ -309,15 +385,15 @@
                     fecha: "2025-02-10",
                     horas: 20,
                     descripcion: "Limpieza de áreas verdes",
-                    evidenciaAntes: "https://picsum.photos/id/101/150/100",
-                    evidenciaDespues: "https://picsum.photos/id/100/150/100"
+                    evidenciaAntes: "",
+                    evidenciaDespues: ""
                 },{
                     id: 2,
                     fecha: "2025-02-20",
                     horas: 25,
                     descripcion: "Apoyo en biblioteca",
-                    evidenciaAntes: "https://picsum.photos/id/20/150/100",
-                    evidenciaDespues: "https://picsum.photos/id/26/150/100"
+                    evidenciaAntes: "",
+                    evidenciaDespues: ""
                 }]
             });
             sistema.alumnos.push({
@@ -352,7 +428,6 @@
         }
     }
 
-    // NUEVA FUNCIÓN: Eliminar alumno
     function eliminarAlumno(matricula) {
         const alumno = sistema.alumnos.find(a => a.matricula === matricula);
         if(!alumno) return false;
@@ -364,8 +439,7 @@
         if(index !== -1) {
             sistema.alumnos.splice(index, 1);
             guardarStorage();
-            renderAdminTables();  // Actualizar tabla
-            // Limpiar reporte si estaba seleccionado
+            renderAdminTables();
             document.getElementById("reportContent").innerHTML = "";
             const select = document.getElementById("selectStudentReport");
             if(select && select.value === matricula) select.value = "";
@@ -394,7 +468,6 @@
             tbody.appendChild(row);
         }
         
-        // Asignar eventos a los botones de eliminar
         document.querySelectorAll('.btn-eliminar').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -403,7 +476,6 @@
             });
         });
         
-        // llenar select de informe
         const select = document.getElementById("selectStudentReport");
         if(select) {
             select.innerHTML = '<option value="">-- Seleccione alumno --</option>';
@@ -429,8 +501,8 @@
                 <td>${act.fecha}</td>
                 <td>${act.horas}</td>
                 <td>${act.descripcion}</td>
-                <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-preview" onerror="this.style.display='none'"><br><a href="${act.evidenciaAntes}" target="_blank">Ver</a>` : "Sin evidencia"}</td>
-                <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-preview" onerror="this.style.display='none'"><br><a href="${act.evidenciaDespues}" target="_blank">Ver</a>` : "Sin evidencia"}</td>
+                <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)">` : "Sin evidencia"}</td>
+                <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)">` : "Sin evidencia"}</td>
             </tr>`;
         }
         html += `</table></div></div>`;
@@ -460,8 +532,8 @@
                     <td>${act.fecha}</td>
                     <td>${act.horas}</td>
                     <td>${act.descripcion.substring(0,60)}</td>
-                    <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-preview" onerror="this.style.display='none'">` : "—"}</td>
-                    <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-preview" onerror="this.style.display='none'">` : "—"}</td>
+                    <td>${act.evidenciaAntes ? `<img src="${act.evidenciaAntes}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)" title="Click para ampliar">` : "—"}</td>
+                    <td>${act.evidenciaDespues ? `<img src="${act.evidenciaDespues}" class="img-thumbnail" loading="lazy" onclick="window.open(this.src)" title="Click para ampliar">` : "—"}</td>
                 </tr>`;
             }
             html += `</table>`;
@@ -475,26 +547,24 @@
         const nuevasHoras = (currentStudentData.horasAcumuladas || 0) + Number(horas);
         if(nuevasHoras > 200) return {ok:false, msg:`No puedes exceder 200 horas. Actualmente ${currentStudentData.horasAcumuladas} + ${horas} superaría el límite.`};
 
-        function fileToBase64(file) {
-            return new Promise((resolve) => {
-                if(!file) return resolve("");
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = () => resolve("");
-                reader.readAsDataURL(file);
-            });
-        }
-        let antesBase64 = "", despuesBase64 = "";
-        if(antesFile) antesBase64 = await fileToBase64(antesFile);
-        if(despuesFile) despuesBase64 = await fileToBase64(despuesFile);
+        // Mostrar mensaje de compresión
+        const msgDiv = document.getElementById("actMsg");
+        msgDiv.innerText = "⏳ Comprimiendo imágenes... esto puede tomar unos segundos";
+        msgDiv.style.color = "orange";
+        
+        // Comprimir imágenes antes de guardar
+        const [antesComprimida, despuesComprimida] = await Promise.all([
+            antesFile ? comprimirImagen(antesFile, 800, 600, 0.7) : Promise.resolve(""),
+            despuesFile ? comprimirImagen(despuesFile, 800, 600, 0.7) : Promise.resolve("")
+        ]);
 
         const nuevaAct = {
             id: sistema.ultimoIdAct++,
             fecha: fecha,
             horas: Number(horas),
             descripcion: descripcion,
-            evidenciaAntes: antesBase64 || "",
-            evidenciaDespues: despuesBase64 || ""
+            evidenciaAntes: antesComprimida,
+            evidenciaDespues: despuesComprimida
         };
         currentStudentData.actividades.push(nuevaAct);
         recalcularHorasAlumno(currentStudentData.matricula);
@@ -503,7 +573,7 @@
         guardarStorage();
         renderStudentPanel();
         if(document.getElementById("adminPanel").style.display === "block") renderAdminTables();
-        return {ok:true, msg:"Actividad registrada con evidencias"};
+        return {ok:true, msg:"✅ Actividad registrada con imágenes comprimidas (carga más rápida)"};
     }
 
     function login(user, pass) {
@@ -620,12 +690,18 @@
         };
         
         document.getElementById("submitActividadBtn").onclick = async () => {
+            // Deshabilitar botón mientras se procesa
+            const btn = document.getElementById("submitActividadBtn");
+            btn.disabled = true;
+            btn.textContent = "⏳ Procesando imágenes...";
+            
             const fecha = document.getElementById("actFecha").value;
             const horas = parseFloat(document.getElementById("actHoras").value);
             const desc = document.getElementById("actDesc").value;
             const antesFile = document.getElementById("evidenciaAntesFile").files[0];
             const despuesFile = document.getElementById("evidenciaDespuesFile").files[0];
             const result = await registrarActividad(fecha, horas, desc, antesFile, despuesFile);
+            
             const msgDiv = document.getElementById("actMsg");
             msgDiv.innerText = result.msg;
             msgDiv.style.color = result.ok ? "green" : "red";
@@ -636,7 +712,10 @@
                 document.getElementById("evidenciaAntesFile").value = "";
                 document.getElementById("evidenciaDespuesFile").value = "";
             }
-            setTimeout(()=>msgDiv.innerText="", 3000);
+            setTimeout(()=>msgDiv.innerText="", 4000);
+            
+            btn.disabled = false;
+            btn.textContent = "✅ Registrar horas + evidencias";
             if(document.getElementById("adminPanel").style.display === "block") renderAdminTables();
             else renderStudentPanel();
         };
